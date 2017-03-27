@@ -6,14 +6,14 @@ import cv2
 import argparse
 
 # for Normal NDVI caculation
-thRED1 = 158
-thGREEN1 = 132
-thYELLOW1 = 75
+thRED1 = 198
+thYELLOW1 = 132
+thGREEN1 = 0
 
 # for NDVI myself
 thRED2 = 158
-thGREEN2 = 132
-thYELLOW2 = 75
+thYELLOW2 = 132
+thGREEN2 = 75
 
 
 def addTransparent(overlay, output, alpha):
@@ -42,32 +42,32 @@ def displayCspace(image, ctype="RGB"):
     cv2.imshow("#2", channels[1])
     cv2.imshow("#3", channels[2])
 
-def getRedArea(image, th=104):
-    th =255 - th
+def getRedArea(image, thG=75, thY=132, thR=158):
+    thR =255 - thR
     cspace = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
     channels = cv2.split(cspace)
 
-    mask = createMask(channels[2], th)   # NDVI red area
+    mask = createMask(channels[2], thR)   # NDVI red area
     return mask
 
 
-def getGreenArea(image, th=135):
+def getGreenArea(image, thG=75, thY=132, thR=158):
     cspace = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     channels = cv2.split(cspace)
     #cv2.imshow("H", channels[0])
     #cv2.imshow("S", channels[1])
     #cv2.imshow("V", channels[2])
 
-    mask = createMask(channels[1], th)  #NDVI green area
+    mask = createMask(channels[1], thG)  #NDVI green area
     return mask
 
-def getYellowArea(image, th=124):
-    th =255 - th
+def getYellowArea(image, thG=75, thY=132, thR=158 ):
+    thY =255 - thY
     #cspace = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
     #channels = cv2.split(cspace)
     #mask = createMask(channels[1], th)   # NDVI yellow area
-    YR = getRedArea(image, th)
-    R = getRedArea(image, thRED2)
+    YR = getRedArea(image, thY)
+    R = getRedArea(image, thR)
     masked = cv2.bitwise_not(YR, YR, mask=R)
 
     return masked
@@ -94,13 +94,20 @@ def ndvi1(image):
     divisor = (r.astype(float) + b.astype(float))
     divisor[divisor == 0] = 0.01  # Make sure we don't divide by zero!
 
-    ndvi = (r.astype(float) - b) / divisor
+    #ndvi = (r.astype(float) - b) / divisor
+    ndvi = (b.astype(float) - r) / divisor
     ndvi2 = contrast_stretch(ndvi)
     ndvi2 = ndvi2.astype(np.uint8)
-    ndvi2 = (255-ndvi2)
-    ndvi2 = cv2.inRange(ndvi2, thRED1, 255)
-    #ndvi = cv2.bitwise_not(ndvi)
-    merged = cv2.merge([g, r, ndvi2])
+    #ndvi2 = (255-ndvi2)
+    redNDVI = cv2.inRange(ndvi2, thRED1, 255)
+    cv2.imshow("NDVI-red", redNDVI)
+    yellowNDVI = cv2.inRange(ndvi2, thYELLOW1, thRED1)
+    cv2.imshow("NDVI-yellow", yellowNDVI)
+    greenNDVI = cv2.inRange(ndvi2, thGREEN1, thYELLOW1)
+    cv2.imshow("NDVI-green", greenNDVI)
+
+    ndvi2 = cv2.bitwise_not(ndvi2)
+    merged = cv2.merge([yellowNDVI, greenNDVI, redNDVI])
 
     print('\nMax NDVI: {m}'.format(m=ndvi.max()))
     print('Mean NDVI: {m}'.format(m=ndvi.mean()))
@@ -110,13 +117,13 @@ def ndvi1(image):
     return merged
 
 def ndvi2(image):
-    redArea = getRedArea(image=image, th=thRED2)
-    greenArea = getGreenArea(image=image, th=thGREEN2)
-    yellowArea = getYellowArea(image=image, th=thYELLOW2)
+    redArea = getRedArea(image=image, thR=thRED2)
+    greenArea = getGreenArea(image=image, thG=thGREEN2)
+    yellowArea = getYellowArea(image=image, thY=thYELLOW2, thR=thRED2)
 
     b, g, r = cv2.split(image)
 
-    merged = cv2.merge([greenArea, yellowArea, redArea])
+    merged = cv2.merge([yellowArea, greenArea, redArea])
     return merged
 
 ap = argparse.ArgumentParser()
