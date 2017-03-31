@@ -7,13 +7,13 @@ import argparse
 
 # use Standard NDVI method, smaller for larger area
 thRED1 = 210
-thYELLOW1 = 132
+thYELLOW1 = 112
 thGREEN1 = 0
 
 # use LAB channels, smaller for larger area
 thRED2 = 100
-thYELLOW2 = 130
-thGREEN2 = 125
+thYELLOW2 = 115
+thGREEN2 = 140
 
 
 def createMask(grayImg, th=104):
@@ -59,10 +59,6 @@ def getYellowArea(image, thG=75, thY=132, thR=158 ):
     mask = createMask(cspace[:,:,1], thY)
     return (255-mask)
 
-    #cspace = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    #mask = createMask(cspace[:,:,2], thY)   # NDVI yellow area
-    #return mask
-
 def contrast_stretch(im):
     """
     Performs a simple contrast stretch of the given image, from 5-95%.
@@ -80,6 +76,8 @@ def contrast_stretch(im):
     return out
 
 def ndvi1(image):
+    global thRED2, thYELLOW2, thGREEN2
+
     b, g, r = cv2.split(image)
     divisor = (r.astype(float) + b.astype(float))
     divisor[divisor == 0] = 0.01  # Make sure we don't divide by zero!
@@ -103,6 +101,7 @@ def ndvi1(image):
     return merged
 
 def ndvi2(image):
+    global thRED2, thYELLOW2, thGREEN2
     #create mask
     redArea = getRedArea(image=image, thR=thRED2)
     greenArea = getGreenArea(image=image, thG=thGREEN2)
