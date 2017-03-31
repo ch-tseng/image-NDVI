@@ -40,24 +40,32 @@ def getRedArea(image, thG=75, thY=132, thR=158):
     #channels = cv2.split(cspace)
     #cv2.imshow("Red Channel", channels[2])
     mask = createMask(cspace[:,:,2], thR)   # NDVI red area
+    points = np.count_nonzero(mask)
+    ratio = points / (image.shape[1] * image.shape[2])
+    print("Red area: {} pixls, ratio: {}%".format(points, ratio ))
+    
     return mask
 
 
 def getGreenArea(image, thG=75, thY=132, thR=158):
     cspace = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    #channels = cv2.split(cspace)
-    #cv2.imshow("H", channels[0])
-    #cv2.imshow("S", channels[1])
-    #cv2.imshow("V", channels[2])
-
     mask = createMask(cspace[:,:,1], thG)  #NDVI green area
+    points = np.count_nonzero(mask)
+    ratio = points / (image.shape[1] * image.shape[2])
+    print("Green area: {} pixls, ratio: {}%".format(points, ratio ))
+
     return mask
 
 def getYellowArea(image, thG=75, thY=132, thR=158 ):
     thY =255 - thY
     cspace = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     mask = createMask(cspace[:,:,1], thY)
-    return (255-mask)
+    mask = (255-mask)
+    points = np.count_nonzero(mask)
+    ratio = points / (image.shape[1] * image.shape[2])
+    print("Yellow+Red area: {} pixls, ratio: {}%".format(points, ratio ))
+
+    return mask
 
 def contrast_stretch(im):
     """
