@@ -5,24 +5,16 @@ import numpy as np
 import cv2
 import argparse
 
-# for Normal NDVI caculation
-thRED1 = 198
+# use Standard NDVI method, smaller for larger area
+thRED1 = 210
 thYELLOW1 = 132
 thGREEN1 = 0
 
-# for NDVI myself
-thRED2 = 158
-thYELLOW2 = 132
-thGREEN2 = 75
+# use LAB channels, smaller for larger area
+thRED2 = 100
+thYELLOW2 = 90
+thGREEN2 = 120
 
-
-def addTransparent(overlay, output, alpha):
-    cv2.addWeighted(overlay, alpha, output, 1 - alpha, 0, output)
-
-
-def replaceColor(image, fromC=[0,0,0], toC=[255,255,255]):
-    image[np.where((image==fromC).all(axis=2))] = toC
-    return image
 
 def createMask(grayImg, th=104):
     masked = cv2.inRange(grayImg, th, 255)
@@ -43,10 +35,10 @@ def displayCspace(image, ctype="RGB"):
     cv2.imshow("#3", channels[2])
 
 def getRedArea(image, thG=75, thY=132, thR=158):
-    thR =255 - thR
+    #thR =255 - thR
     cspace = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
     channels = cv2.split(cspace)
-
+    #cv2.imshow("Red Channel", channels[2])
     mask = createMask(channels[2], thR)   # NDVI red area
     return mask
 
@@ -62,15 +54,11 @@ def getGreenArea(image, thG=75, thY=132, thR=158):
     return mask
 
 def getYellowArea(image, thG=75, thY=132, thR=158 ):
-    thY =255 - thY
-    #cspace = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    #channels = cv2.split(cspace)
-    #mask = createMask(channels[1], th)   # NDVI yellow area
-    YR = getRedArea(image, thY)
-    R = getRedArea(image, thR)
-    masked = cv2.bitwise_not(YR, YR, mask=R)
-
-    return masked
+    #thY =255 - thY
+    cspace = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    channels = cv2.split(cspace)
+    mask = createMask(channels[2], thY)   # NDVI yellow area
+    return mask
 
 def contrast_stretch(im):
     """
@@ -89,24 +77,19 @@ def contrast_stretch(im):
     return out
 
 def ndvi1(image):
-    #image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     b, g, r = cv2.split(image)
     divisor = (r.astype(float) + b.astype(float))
     divisor[divisor == 0] = 0.01  # Make sure we don't divide by zero!
 
-    #ndvi = (r.astype(float) - b) / divisor
     ndvi = (b.astype(float) - r) / divisor
+
+    #Paint the NDVI image
     ndvi2 = contrast_stretch(ndvi)
     ndvi2 = ndvi2.astype(np.uint8)
-    #ndvi2 = (255-ndvi2)
-    redNDVI = cv2.inRange(ndvi2, thRED1, 255)
-    cv2.imshow("NDVI-red", redNDVI)
-    yellowNDVI = cv2.inRange(ndvi2, thYELLOW1, thRED1)
-    cv2.imshow("NDVI-yellow", yellowNDVI)
-    greenNDVI = cv2.inRange(ndvi2, thGREEN1, thYELLOW1)
-    cv2.imshow("NDVI-green", greenNDVI)
 
-    ndvi2 = cv2.bitwise_not(ndvi2)
+    redNDVI = cv2.inRange(ndvi2, thRED1, 255)
+    yellowNDVI = cv2.inRange(ndvi2, thYELLOW1, thRED1)
+    greenNDVI = cv2.inRange(ndvi2, thGREEN1, thYELLOW1)
     merged = cv2.merge([yellowNDVI, greenNDVI, redNDVI])
 
     print('\nMax NDVI: {m}'.format(m=ndvi.max()))
@@ -117,14 +100,23 @@ def ndvi1(image):
     return merged
 
 def ndvi2(image):
+    #create mask
     redArea = getRedArea(image=image, thR=thRED2)
     greenArea = getGreenArea(image=image, thG=thGREEN2)
     yellowArea = getYellowArea(image=image, thY=thYELLOW2, thR=thRED2)
 
-    b, g, r = cv2.split(image)
+    redImage = image.copy()
+    redImage[redArea == 255] = [0, 0, 255]
+    cv2.imshow("red", redImage)
 
-    merged = cv2.merge([yellowArea, greenArea, redArea])
-    return merged
+    yellowImage = image.copy()
+    yellowImage[yellowArea == 255] = [5, 255, 252]
+    cv2.imshow("yellow", yellowImage)
+
+    greenImage = image.copy()
+    greenImage[greenArea == 255] = [0, 255, 0]
+    cv2.imshow("green", greenImage)
+
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--image", required=True, help="NDVI image")
@@ -135,15 +127,13 @@ image = cv2.imread(args["image"])
 image = imutils.resize(image, width = 800)
 zeros = np.zeros(image.shape[:2], dtype = "uint8")
 
-#displayCspace(image, ctype="RGB")
+#My method
+ndvi2(image)
 
-#My way
-ndviIMG2 = ndvi2(image)
-
-dst = cv2.addWeighted(ndviIMG2,0.6,image,0.4,0)
-cv2.imshow("NDVI-2", dst)
-
+#Standard method
 ndviIMG1 = ndvi1(image)
-cv2.imshow("NDVI-1", ndviIMG1)
+#cv2.imshow("Way2 - Standard", ndviIMG1)
+
+cv2.imshow("NDVI-Original", cv2.imread(args['ndvi']))
 
 cv2.waitKey(0)
