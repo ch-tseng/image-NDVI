@@ -12,8 +12,8 @@ thGREEN1 = 0
 
 # use LAB channels, smaller for larger area
 thRED2 = 100
-thYELLOW2 = 90
-thGREEN2 = 120
+thYELLOW2 = 130
+thGREEN2 = 125
 
 
 def createMask(grayImg, th=104):
@@ -37,28 +37,31 @@ def displayCspace(image, ctype="RGB"):
 def getRedArea(image, thG=75, thY=132, thR=158):
     #thR =255 - thR
     cspace = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    channels = cv2.split(cspace)
+    #channels = cv2.split(cspace)
     #cv2.imshow("Red Channel", channels[2])
-    mask = createMask(channels[2], thR)   # NDVI red area
+    mask = createMask(cspace[:,:,2], thR)   # NDVI red area
     return mask
 
 
 def getGreenArea(image, thG=75, thY=132, thR=158):
     cspace = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    channels = cv2.split(cspace)
+    #channels = cv2.split(cspace)
     #cv2.imshow("H", channels[0])
     #cv2.imshow("S", channels[1])
     #cv2.imshow("V", channels[2])
 
-    mask = createMask(channels[1], thG)  #NDVI green area
+    mask = createMask(cspace[:,:,1], thG)  #NDVI green area
     return mask
 
 def getYellowArea(image, thG=75, thY=132, thR=158 ):
-    #thY =255 - thY
-    cspace = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    channels = cv2.split(cspace)
-    mask = createMask(channels[2], thY)   # NDVI yellow area
-    return mask
+    thY =255 - thY
+    cspace = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    mask = createMask(cspace[:,:,1], thY)
+    return (255-mask)
+
+    #cspace = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    #mask = createMask(cspace[:,:,2], thY)   # NDVI yellow area
+    #return mask
 
 def contrast_stretch(im):
     """
@@ -124,16 +127,20 @@ ap.add_argument("-n", "--ndvi", required=True, help="Correct ndvi image.")
 args = vars(ap.parse_args())
 
 image = cv2.imread(args["image"])
-image = imutils.resize(image, width = 800)
+nimage = cv2.imread(args["ndvi"])
+image = imutils.resize(image, width = 500)
+nimage = imutils.resize(nimage, width = 500)
 zeros = np.zeros(image.shape[:2], dtype = "uint8")
 
-#My method
 ndvi2(image)
 
-#Standard method
-ndviIMG1 = ndvi1(image)
-#cv2.imshow("Way2 - Standard", ndviIMG1)
+#display original image
+cv2.imshow("Original", image)
 
-cv2.imshow("NDVI-Original", cv2.imread(args['ndvi']))
+#caculate NDVI  value
+ndviIMG1 = ndvi1(image)
+
+#display standard NDVI
+cv2.imshow("NDVI-Original", nimage)
 
 cv2.waitKey(0)
